@@ -1,0 +1,13 @@
+.DS_Store
+build/
+dist/
+!build/icons
+node_modules/
+npm-debug.log
+npm-debug.log.*
+thumbs.db
+!.gitkeep
+output/
+*.exe
+4.jpg
+5.jpg

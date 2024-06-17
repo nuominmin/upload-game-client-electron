@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>登陆</title>
+    <style>
+        * {
+            padding: 0;
+            margin: 0;
+        }
+
+        html {
+            background-color: #fff;
+        }
+
+        body {
+            width: 100vw;
+            height: 100vh;
+            border-radius: 50px;
+            overflow: hidden;
+        }
+
+        /* body,html {
+            -webkit-app-region: drag;
+        }
+        section {
+            -webkit-app-region: no-drag
+        } */
+        #loginimg {
+            background: url("../images/login.jpg") no-repeat;
+            width: 40%;
+            height: 560px;
+        }
+
+        #logintable {
+            width: 40%;
+            text-align: center;
+            padding: 0 10%;
+            padding-top: 78px;
+        }
+
+        .user-select-none {
+            /* Chrome all / Safari all /opera15+*/
+            -webkit-user-select: none;
+            /* Firefox all */
+            -moz-user-select: none;
+            /* IE 10+ */
+            -ms-user-select: none;
+            /* 通用 */
+            user-select: none;
+        }
+
+        #logintable h1 {
+            font-size: 35px;
+            font-family: MicrosoftYaHei;
+            color: rgb(25, 103, 212);
+            margin-bottom: 1vw;
+            font-weight: bold;
+        }
+
+        .left {
+            float: left;
+        }
+
+        .right {
+            float: right;
+        }
+
+        .clear {
+            clear: both;
+        }
+
+        p {
+            margin-top: 2vw
+        }
+
+        input {
+            height: 60px;
+            font-size: 24px;
+            font-family: PingFangSC-Regular;
+            font-weight: 400;
+            color: #333 !important;
+            line-height: 2vw;
+            width: 100%;
+            border: none;
+            outline: 0;
+            background: transparent;
+            padding: 0.3vw 0;
+            border-bottom: 0.05vw solid #E6EBF2;
+            -webkit-box-shadow: 0 0 0px 1000px white inset;
+            padding-left: 5px;
+        }
+
+        button {
+            width: 100%;
+            height: 50px;
+            background-color: rgba(72, 144, 247, 1);
+            box-shadow: 0 0.2vw 0.8vw 0 rgba(151, 190, 246, 1);
+            border-radius: 6px;
+            font-size: 25px;
+            font-family: PingFangSC-Regular;
+            font-weight: 400;
+            color: #ffffff;
+            line-height: 2vw;
+            border: none;
+            outline: none;
+            cursor: pointer;
+        }
+
+        button.selected {
+            background-color: rgba(160, 162, 165, 1);
+        }
+
+        #captcha-input {
+            width: 50%;
+        }
+
+        #captcha {
+            width: 40%
+        }
+
+        #captcha img {
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        #hint {
+            display: block;
+            height: 50px;
+            line-height: 70px;
+            text-align: left;
+            color: #ff0000;
+            font-size: 13px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="loginimg" class="left user-select-none"></div>
+    <div id="logintable" class="left">
+        <h1 class="user-select-none">登陆</h1>
+        <p>
+            <input type="text" id="username" placeholder="请输入用户账号" onchange="removeHint()">
+        </p>
+        <p>
+            <input type="password" id="password" placeholder="请输入用户密码" onchange="removeHint()">
+        </p>
+        <p>
+            <input type="text" id="captcha-input" placeholder="请输入验证码" class="left" onchange="removeHint()">
+            <span id="captcha" class="right user-select-none">
+                <img id="captcha-resource" alt="" onclick="reCaptcha()">
+            </span>
+        </p>
+        <div class="clear"></div>
+        <div>
+            <span id="hint" class="user-select-none"></span>
+            <button onclick="submit()">登陆</button>
+        </div>
+    </div>
+    <div class="clear"></div>
+</body>
+
+</html>
+<script>
+    document.getElementById("username").focus();
+
+    const { ipcRenderer } = require('electron');
+
+    let apiURL;
+    var query = window.location.search.substring(1);
+    var vars = query.split("&");
+    for (var i = 0; i < vars.length; i++) {
+        var pair = vars[i].split("=");
+        if (pair[0] == "api") {
+            apiURL = unescape(pair[1])
+        }
+    }
+
+    function reCaptcha() {
+        document.getElementById("captcha-resource").src = apiURL + "captcha?" + Math.random()
+    }
+    reCaptcha()
+
+    function submit() {
+        setButtonSelected()
+        let username = document.getElementById("username").value
+        let password = document.getElementById("password").value
+        let captcha = document.getElementById("captcha-input").value
+        if (username == "") {
+            document.getElementById("username").focus();
+            document.getElementById("hint").innerText = "用户账号不能为空";
+            removeButtonSelected()
+            return
+        }
+
+        if (password == "") {
+            document.getElementById("password").focus();
+            document.getElementById("hint").innerText = "用户密码不能为空";
+            removeButtonSelected()
+            return
+        }
+
+        if (captcha == "") {
+            document.getElementById("captcha-input").focus();
+            document.getElementById("hint").innerText = "验证码不能为空";
+            removeButtonSelected()
+            return
+        }
+
+        var httpRequest = new XMLHttpRequest();
+        httpRequest.open('POST', apiURL + "login", true);
+        httpRequest.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+        httpRequest.send('username=' + username + '&password=' + password + '&captcha=' + captcha);
+        httpRequest.onreadystatechange = function () {
+            if (httpRequest.readyState == 4 && httpRequest.status == 200) {
+                var response = JSON.parse(httpRequest.responseText);
+                if (response.code == 0) {
+                    ipcRenderer.send('login finish', JSON.stringify(response.data));
+                } else {
+                    document.getElementById("hint").innerText = response.msg;
+                    document.getElementById("captcha-input").value = ""
+                    reCaptcha()
+                    removeButtonSelected()
+                }
+            }
+        };
+    }
+
+
+    function setButtonSelected() {
+        document.getElementsByTagName('button')[0].classList.add("selected")
+    }
+
+    function removeButtonSelected() {
+        document.getElementsByTagName('button')[0].className = ""
+    }
+
+    function removeHint() {
+        document.getElementById("hint").innerText = "";
+    }
+
+
+    document.getElementById("captcha-input").addEventListener('keyup', function (event) {
+        if (event.keyCode == "13") {
+            submit()
+        }
+    });
+</script>
